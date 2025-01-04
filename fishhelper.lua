@@ -1,7 +1,7 @@
 -- автор наложил говнеца
 
 script_name('fishHelper')
-script_version('1.0')
+script_version('1.1')
 script_author('Theopka')
 
 local ffi = require 'ffi'
@@ -15,6 +15,7 @@ u8 = encoding.UTF8
 local faicons = require('fAwesome6')
 local fa = require('fAwesome6_solid')
 
+local MDS = MONET_DPI_SCALE
 local AI_TOGGLE = {}
 local ToU32 = imgui.ColorConvertFloat4ToU32
 local filter = imgui.ImGuiTextFilter() 
@@ -32,7 +33,7 @@ local did = 25286 -- your dialog id
 local ltn12 = require("ltn12")
 local http = require("socket.http")
 local lmPath = "fishhelper.lua"
-local lmUrl = "https://raw.githubusercontent.com/Theopochka/Lavka-update-Rodina/main/Lavka%20Market%20Rodina%20Edition.lua"
+local lmUrl = "https://raw.githubusercontent.com/Theopochka/fishhelper_update/main/fishhelper.lua"
 
 local inicfg = require 'inicfg'
 local directIni = 'fishHelper.ini'
@@ -160,6 +161,11 @@ local artefakt = {             -- таблица артефактов, второй пункт это рыбные мо
     ['Ритуальная чаша']       = 2,
     ['Неизвестная статуэтка'] = 2,
 }
+function imgui.GetMiddleButtonX(count)
+    local width = imgui.GetWindowContentRegionWidth() -- ширины контекста окно
+    local space = imgui.GetStyle().ItemSpacing.x
+    return count == 1 and width or width/count - ((space * (count-1)) / count) -- вернется средние ширины по количеству
+end
 function downloadFile(url, path)
     local response = {}
     local _, status_code, _ = http.request{
@@ -280,13 +286,13 @@ local StateFrame = imgui.OnFrame(
     function() return Window[0] end, 
     function(self)
         local resX, resY = getScreenResolution()
-        local sizeX, sizeY = 540 * MONET_DPI_SCALE, 340 * MONET_DPI_SCALE
+        local sizeX, sizeY = 540 * MDS, 340 * MDS
         imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
 
         imgui.Begin('dlc', Window, imgui.WindowFlags.NoDecoration)
         
-        imgui.SetCursorPos(imgui.ImVec2(4 * MONET_DPI_SCALE, 4 * MONET_DPI_SCALE))
+        imgui.SetCursorPos(imgui.ImVec2(4 * MDS, 4 * MDS))
         if imgui.Button(fa.XMARK..'', imgui.ImVec2(50, 50)) then
             Window[0] = false
         end
@@ -295,14 +301,14 @@ local StateFrame = imgui.OnFrame(
             imgui.Text(u8'Закрыть меню')
             imgui.EndTooltip()
         end
-        imgui.SetCursorPos(imgui.ImVec2(20 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE))
+        imgui.SetCursorPos(imgui.ImVec2(20 * MDS, 30 * MDS))
         imgui.PushFont(big)
         imgui.Text(faicons('fish')..' Fish helper')
         imgui.PopFont()
 
         imgui.PushStyleColor(imgui.Col.Border, imgui.ImVec4(1.0, 1.0, 1.0, 0.0))
-        imgui.SetCursorPos(imgui.ImVec2(115 * MONET_DPI_SCALE, 10 * MONET_DPI_SCALE)) 
-    if imgui.BeginChild('Name##'..tab, imgui.ImVec2(415 * MONET_DPI_SCALE, 320 * MONET_DPI_SCALE), true) then -- меню
+        imgui.SetCursorPos(imgui.ImVec2(115 * MDS, 10 * MDS)) 
+    if imgui.BeginChild('Name##'..tab, imgui.ImVec2(415 * MDS, 320 * MDS), true) then -- меню
         
         if tab == 1 then 
             imgui.CenterText(u8'Итоговый заработок: '..sep(ini.stats.salary + ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary)..'$') 
@@ -315,34 +321,77 @@ local StateFrame = imgui.OnFrame(
             imgui.Hint('Это рыбные монеты, я просто конвертировал с артефактов в рыбные монеты')
             imgui.CenterText(u8'Количество рыбы: '..sep(ini.stats.fishrodall))
             imgui.CenterText(u8'Количество ларцов: '..sep(ini.stats.larecall))
-            imgui.SetCursorPos(imgui.ImVec2(0 * MONET_DPI_SCALE, 252 * MONET_DPI_SCALE))
-            if imgui.Button(fa.DELETE_LEFT..u8' Сбросить всё', imgui.ImVec2(415 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE)) then
-                ini.stats.larecsalary = 0
-                ini.stats.fishsalary = 0
-                ini.stats.artefaktsalary = 0
-                ini.stats.artefaktall = 0
-                ini.stats.fishrodall = 0
-                ini.stats.larecall = 0
-                save()
+            imgui.SetCursorPosY(imgui.GetWindowSize().y - (30*2) * MDS - imgui.GetStyle().FramePadding.y * 2)
+            if imgui.Button(fa.TRASH..u8' Сбросить всё', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
+                imgui.OpenPopup(fa.CIRCLE_EXCLAMATION..u8' Предупреждения! ')
             end
-            if imgui.Button(fa.DELETE_LEFT..u8' Сбросить заработок', imgui.ImVec2(205 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE)) then
-                ini.stats.larecsalary = 0
-                ini.stats.fishsalary = 0
-                ini.stats.artefaktsalary = 0
-                save()
+            imgui.SetNextWindowSize(imgui.ImVec2(200* MDS, 72 * MDS), imgui.Cond.FirstUseEver)
+            if imgui.BeginPopupModal(fa.CIRCLE_EXCLAMATION..u8' Предупреждения! ', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+                imgui.CenterText(u8'Вы уверены?')
+                if imgui.Button(fa.CHECK..u8'Да', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    ini.stats.larecsalary = 0
+                    ini.stats.fishsalary = 0
+                    ini.stats.artefaktsalary = 0
+                    ini.stats.artefaktall = 0
+                    ini.stats.fishrodall = 0
+                    ini.stats.larecall = 0
+                    save()
+                    imgui.CloseCurrentPopup()
+                end
+                imgui.SameLine()
+                if imgui.Button(fa.XMARK..u8' Нет', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    imgui.CloseCurrentPopup()
+                end
+                
+                imgui.EndPopup()
+            end
+
+            if imgui.Button(fa.DELETE_LEFT..u8' Сбросить заработок', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                imgui.OpenPopup(fa.CIRCLE_EXCLAMATION..u8' Предупреждения!  ')
+            end
+            imgui.SetNextWindowSize(imgui.ImVec2(200* MDS, 72 * MDS), imgui.Cond.FirstUseEver)
+            if imgui.BeginPopupModal(fa.CIRCLE_EXCLAMATION..u8' Предупреждения!  ', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+                imgui.CenterText(u8'Вы уверены?')
+                if imgui.Button(fa.CHECK..u8'Да', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    ini.stats.larecsalary = 0
+                    ini.stats.fishsalary = 0
+                    ini.stats.artefaktsalary = 0
+                    save()
+                    imgui.CloseCurrentPopup()
+                end
+                imgui.SameLine()
+                if imgui.Button(fa.XMARK..u8' Нет', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    imgui.CloseCurrentPopup()
+                end
+                
+                imgui.EndPopup()
             end
             imgui.SameLine()
-            if imgui.Button(fa.DELETE_LEFT..u8' Сбросить количество', imgui.ImVec2(205 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE)) then
-                ini.stats.artefaktall = 0
-                ini.stats.fishrodall = 0
-                ini.stats.larecall = 0
-                save()
+            if imgui.Button(fa.DELETE_LEFT..u8' Сбросить количество', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                imgui.OpenPopup(fa.CIRCLE_EXCLAMATION..u8' Предупреждения!   ')
+            end
+            imgui.SetNextWindowSize(imgui.ImVec2(200* MDS, 72 * MDS), imgui.Cond.FirstUseEver)
+            if imgui.BeginPopupModal(fa.CIRCLE_EXCLAMATION..u8' Предупреждения!   ', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+                imgui.CenterText(u8'Вы уверены?')
+                if imgui.Button(fa.CHECK..u8'Да', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    ini.stats.artefaktall = 0
+                    ini.stats.fishrodall = 0
+                    ini.stats.larecall = 0
+                    save()
+                    imgui.CloseCurrentPopup()
+                end
+                imgui.SameLine()
+                if imgui.Button(fa.XMARK..u8' Нет', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
+                    imgui.CloseCurrentPopup()
+                end
+                
+                imgui.EndPopup()
             end
         end
 
         if tab == 2 then 
 
-            if imgui.Button(fa.TAG..u8' Установить цены', imgui.ImVec2(205 * MONET_DPI_SCALE, 50 * MONET_DPI_SCALE)) then
+            if imgui.Button(fa.TAG..u8' Установить цены', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
                 imgui.OpenPopup(fa.MONEY_CHECK_DOLLAR..u8' Цены')
             end
             if imgui.BeginPopupModal(fa.MONEY_CHECK_DOLLAR..u8' Цены', _, imgui.WindowFlags.AlwaysAutoResize) then
@@ -354,7 +403,7 @@ local StateFrame = imgui.OnFrame(
                     ini.price.artefaktprice = buffer.artefaktprice[0]
                     save()
                 end
-                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(-1, 50)) then
+                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(-1, 50 * MDS)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
@@ -362,7 +411,7 @@ local StateFrame = imgui.OnFrame(
 
             imgui.SameLine()
 
-            if imgui.Button(fa.FISH..u8' fishingBot', imgui.ImVec2(205 * MONET_DPI_SCALE, 50 * MONET_DPI_SCALE)) then
+            if imgui.Button(fa.FISH..u8' fishingBot', imgui.ImVec2(imgui.GetMiddleButtonX(2), 30 * MDS)) then
                 imgui.OpenPopup(fa.GEAR..u8' Настроить бота')
             end
             if imgui.BeginPopupModal(fa.GEAR..u8' Настроить бота', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
@@ -371,13 +420,13 @@ local StateFrame = imgui.OnFrame(
                     ini.button.fishbot = fishbotknopka[0]
                     save()
                 end
-                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(160 * MONET_DPI_SCALE, 20 * MONET_DPI_SCALE)) then
+                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(160 * MDS, 20 * MDS)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
             end
 
-            if imgui.Button(fa.WINDOW_RESTORE..u8' Меню статистика', imgui.ImVec2(415 * MONET_DPI_SCALE, 50 * MONET_DPI_SCALE)) then
+            if imgui.Button(fa.WINDOW_RESTORE..u8' Меню статистика', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
                 imgui.OpenPopup(fa.GEAR..u8' Настроить меню')
             end
             if imgui.BeginPopupModal(fa.GEAR..u8' Настроить меню', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
@@ -385,13 +434,13 @@ local StateFrame = imgui.OnFrame(
                     ini.oknostats.okno = WindowStats[0]
                     save()
                 end
-                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(180 * MONET_DPI_SCALE, 20 * MONET_DPI_SCALE)) then
+                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(180 * MDS, 20 * MDS)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
             end
 
-            if imgui.Button(fa.BOLT..u8' AutoCaptcha', imgui.ImVec2(415 * MONET_DPI_SCALE, 50 * MONET_DPI_SCALE)) then
+            if imgui.Button(fa.BOLT..u8' AutoCaptcha by ospx', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
                 imgui.OpenPopup(fa.GEAR..u8' Настроить каптчу')
             end
             if imgui.BeginPopupModal(fa.GEAR..u8' Настроить каптчу', _, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
@@ -404,7 +453,7 @@ local StateFrame = imgui.OnFrame(
                     save()
                 end
                 imgui.Text(u8'в мс, 1000мс = 1с')
-                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(440 * MONET_DPI_SCALE, 20 * MONET_DPI_SCALE)) then
+                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(440 * MDS, 20 * MDS)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
@@ -416,7 +465,7 @@ local StateFrame = imgui.OnFrame(
             imgui.CenterText(fa.USER..u8' Author: Theopka')
             imgui.CenterText(fa.FIRE..u8' Version: '..thisScript().version)
             imgui.CenterText('')
-            if imgui.Button(fa.PAPER_PLANE..u8" Перейти в ТГК", imgui.ImVec2(-1 * MONET_DPI_SCALE, 25 * MONET_DPI_SCALE)) then 
+            if imgui.Button(fa.PAPER_PLANE..u8" Перейти в ТГК", imgui.ImVec2(imgui.GetMiddleButtonX(1), 25 * MDS)) then 
                 openLink("https://t.me/TheopkaStudio") 
             end
             if imgui.CollapsingHeader(fa.FIRE..u8' Список обновленний') then
@@ -429,15 +478,15 @@ local StateFrame = imgui.OnFrame(
        end
 
        
-imgui.SetCursorPos(imgui.ImVec2(10 * MONET_DPI_SCALE, 70 * MONET_DPI_SCALE))
-if imgui.BeginChild('Buttons##', imgui.ImVec2(100 * MONET_DPI_SCALE, 260 * MONET_DPI_SCALE), true) then -- TAB 
+imgui.SetCursorPos(imgui.ImVec2(10 * MDS, 70 * MDS))
+if imgui.BeginChild('Buttons##', imgui.ImVec2(100 * MDS, 260 * MDS), true) then -- TAB 
     imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(1.0, 1.0, 1.0, 0.0))
     if activeButton == 1 then
         imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.0, 0.0, 0.0, 1.0))
     end
     imgui.SetCursorPos(imgui.ImVec2(2, imgui.GetCursorPosY())) 
         imgui.PushFont(texte)
-    if imgui.Button(faicons('circle_info')..u8" Статистика", imgui.ImVec2(95 * MONET_DPI_SCALE, 83 * MONET_DPI_SCALE)) then
+    if imgui.Button(faicons('circle_info')..u8" Статистика", imgui.ImVec2(95 * MDS, 83 * MDS)) then
         tab = 1
         activeButton = 1
     end
@@ -445,14 +494,14 @@ if imgui.BeginChild('Buttons##', imgui.ImVec2(100 * MONET_DPI_SCALE, 260 * MONET
         imgui.PopStyleColor()
         local drawlist = imgui.GetForegroundDrawList()
         local buttonPos = imgui.GetItemRectMax() 
-        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MONET_DPI_SCALE), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0)
+        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MDS), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0)
     end
 
     if activeButton == 2 then
         imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.0, 0.0, 0.0, 1.0)) 
     end
     imgui.SetCursorPos(imgui.ImVec2(2, imgui.GetCursorPosY()))  
-    if imgui.Button(faicons('gear')..u8" Настройки", imgui.ImVec2(95 * MONET_DPI_SCALE, 83 * MONET_DPI_SCALE)) then
+    if imgui.Button(faicons('gear')..u8" Настройки", imgui.ImVec2(95 * MDS, 83 * MDS)) then
         tab = 2
         activeButton = 2
     end
@@ -460,14 +509,14 @@ if imgui.BeginChild('Buttons##', imgui.ImVec2(100 * MONET_DPI_SCALE, 260 * MONET
         imgui.PopStyleColor()
         local drawlist = imgui.GetForegroundDrawList()
         local buttonPos = imgui.GetItemRectMax() 
-        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MONET_DPI_SCALE), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0)
+        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MDS), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0)
     end
 
     if activeButton == 3 then
         imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.0, 0.0, 0.0, 1.0)) 
     end
     imgui.SetCursorPos(imgui.ImVec2(2, imgui.GetCursorPosY())) 
-    if imgui.Button(faicons('user')..u8" Информация", imgui.ImVec2(95 * MONET_DPI_SCALE, 83 * MONET_DPI_SCALE)) then
+    if imgui.Button(faicons('user')..u8" Информация", imgui.ImVec2(95 * MDS, 83 * MDS)) then
         tab = 3
         activeButton = 3
     end
@@ -475,7 +524,7 @@ if imgui.BeginChild('Buttons##', imgui.ImVec2(100 * MONET_DPI_SCALE, 260 * MONET
         imgui.PopStyleColor()
         local drawlist = imgui.GetForegroundDrawList()
         local buttonPos = imgui.GetItemRectMax()
-        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MONET_DPI_SCALE), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0) 
+        drawlist:AddLine(buttonPos, buttonPos - imgui.ImVec2(0, 83 * MDS), imgui.ColorConvertFloat4ToU32(imgui.ImVec4(1.0, 0.0, 0.0, 1.0)), 4.0) 
     end
 imgui.PopFont()
 
@@ -490,11 +539,11 @@ imgui.OnFrame(
     function() return knopka[0] end,
     function(player)
         local resX, resY = getScreenResolution()
-        local sizeX, sizeY = 60 * MONET_DPI_SCALE, 60 * MONET_DPI_SCALE
+        local sizeX, sizeY = 60 * MDS, 60 * MDS
         imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
         if imgui.Begin('Main Window', knopka, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
-            if imgui.Button(fa.FISH..u8'', imgui.ImVec2(50 * MONET_DPI_SCALE, 50 * MONET_DPI_SCALE)) then
+            if imgui.Button(fa.FISH..u8'', imgui.ImVec2(50 * MDS, 50 * MDS)) then
                 active = not active
                 cmd = cmd
                 msg(active and'Бот запущен!' or 'Бот выключен!')
@@ -507,7 +556,7 @@ imgui.OnFrame(
     function() return WindowStats[0] end,
     function(player)
         local resX, resY = getScreenResolution()
-        local sizeX, sizeY = 80 * MONET_DPI_SCALE, 80 * MONET_DPI_SCALE
+        local sizeX, sizeY = 80 * MDS, 80 * MDS
         imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
         if imgui.Begin('stats_window', WindowStats, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.AlwaysAutoResize) then
@@ -541,10 +590,10 @@ imgui.OnFrame(function() return found_update[0] end, function(player)
     imgui.CenterText('')
     imgui.CenterText(u8'О новых изменениях почитайте в пункте "Информация"')
     imgui.CenterText('')
-    if imgui.Button(faicons("DOWNLOAD") .. u8' ОБНОВИТЬ', imgui.ImVec2(450 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE)) then
+    if imgui.Button(faicons("DOWNLOAD") .. u8' ОБНОВИТЬ', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
         updateScript(lmUrl, lmPath)
     end
-    if imgui.Button(faicons("FORWARD") .. u8' ПРОПУСТИТЬ', imgui.ImVec2(450 * MONET_DPI_SCALE, 30 * MONET_DPI_SCALE)) then
+    if imgui.Button(faicons("FORWARD") .. u8' ПРОПУСТИТЬ', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
         found_update[0] = not found_update[0]
         msg('Обновление скрипта пропущено')
     end
