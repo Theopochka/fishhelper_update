@@ -1,7 +1,7 @@
 -- автор наложил говнеца
 
 script_name('fishHelper')
-script_version('1.1')
+script_version('1.0')
 script_author('Theopka')
 
 local ffi = require 'ffi'
@@ -23,7 +23,7 @@ local UI = { version = 1, font = {}, tab = 1 }
 local tab = 1
 local activeButton = 1
 
-local Window = imgui.new.bool(true)
+local Window = imgui.new.bool()
 
 local waiting = 1500
 local active = false
@@ -69,7 +69,7 @@ local save = function()
     inicfg.save(ini, directIni)
 end
 
-local found_update = imgui.new.bool(true)
+local found_update = imgui.new.bool()
 local WindowStats = imgui.new.bool(ini.oknostats.okno)
 
 local delay = imgui.new.int(ini.autocaptcha.delay)
