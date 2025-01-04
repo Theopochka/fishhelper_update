@@ -403,7 +403,7 @@ local StateFrame = imgui.OnFrame(
                     ini.price.artefaktprice = buffer.artefaktprice[0]
                     save()
                 end
-                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(-1, 50 * MDS)) then
+                if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(-1, 20 * MDS)) then
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
