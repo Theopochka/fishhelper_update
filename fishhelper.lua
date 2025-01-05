@@ -823,7 +823,6 @@ function imgui.ToggleButton(label, label_true, bool, a_speed)
     return bebrochka
 end
 function UI.Init()
-    imgui.GetIO().IniFilename = nil
     local glyph_ranges = imgui.GetIO().Fonts:GetGlyphRangesCyrillic()
     imgui.GetIO().Fonts:AddFontFromFileTTF(getWorkingDirectory(0x14) .. '\\lib\\mimgui\\trebucbd.ttf', 16.0, nil, glyph_ranges)
     big = imgui.GetIO().Fonts:AddFontFromFileTTF(getWorkingDirectory(0x14) .. '\\lib\\mimgui\\trebucbd.ttf', 29.0, _, glyph_ranges)
