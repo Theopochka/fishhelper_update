@@ -29,7 +29,7 @@ local waiting = 1500
 local active = false
 local cmd = "/fishrod"
 local did = 25286 -- your dialog id
-
+--
 local ltn12 = require("ltn12")
 local http = require("socket.http")
 local lmPath = "fishhelper.lua"
@@ -215,7 +215,7 @@ function updateScript(scriptUrl, scriptPath)
 end
 
 function sampev.onServerMessage(color, text)
-    local fish_name = text:match("%[Рыбалка%] Вы поймали рыбу '(.-)', поздравляем вас с уловом!")
+    local fish_name = text:match("поймал%(а%) рыбу '(.-)'")
     if fish_name then
         local value = fishvalue[fish_name]
         if value then
@@ -225,7 +225,7 @@ function sampev.onServerMessage(color, text)
         end
     end
 
-    local art_name = text:match("%[Рыбалка%] Вы поймали '(.-)'. поздравляем вас!")
+    local art_name = text:match("поймал%(а%) '(.-)'")
     if art_name then
         local art_value = artefakt[art_name]
         if art_value then
