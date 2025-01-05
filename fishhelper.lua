@@ -215,7 +215,7 @@ function updateScript(scriptUrl, scriptPath)
 end
 
 function sampev.onServerMessage(color, text)
-    local fish_name = text:match("Вам был добавлен предмет 'Рыба (.+)")
+    local fish_name = text:match("%[Рыбалка%] Вы поймали рыбу '(.-)', поздравляем вас с уловом!")
     if fish_name then
         local value = fishvalue[fish_name]
         if value then
@@ -225,7 +225,7 @@ function sampev.onServerMessage(color, text)
         end
     end
 
-    local art_name = text:match("Вам был добавлен предмет '(.+)")
+    local art_name = text:match("%[Рыбалка%] Вы поймали '(.-)'. поздравляем вас!")
     if art_name then
         local art_value = artefakt[art_name]
         if art_value then
@@ -538,28 +538,22 @@ end
 imgui.OnFrame(
     function() return knopka[0] end,
     function(player)
-        local resX, resY = getScreenResolution()
         local sizeX, sizeY = 60 * MDS, 60 * MDS
-        imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
-        if imgui.Begin('Main Window', knopka, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize) then
+        imgui.Begin('Main Window', knopka, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize)
             if imgui.Button(fa.FISH..u8'', imgui.ImVec2(50 * MDS, 50 * MDS)) then
                 active = not active
                 cmd = cmd
                 msg(active and'Бот запущен!' or 'Бот выключен!')
             end
-            imgui.End()
-        end
+        imgui.End()
     end
 )
 imgui.OnFrame(
     function() return WindowStats[0] end,
     function(player)
-        local resX, resY = getScreenResolution()
-        local sizeX, sizeY = 80 * MDS, 80 * MDS
-        imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
-        if imgui.Begin('stats_window', WindowStats, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.AlwaysAutoResize) then
+        imgui.Begin('stats_window', WindowStats, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.AlwaysAutoResize)
+
             imgui.CenterText(fa.MONEY_CHECK..u8' Итоговый заработок: '..sep(ini.stats.salary + ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary)..'$') 
             imgui.Text('')
             imgui.CenterText(u8'Заработок ларцов: '..sep(ini.stats.larecsalary)..'$')
@@ -569,8 +563,8 @@ imgui.OnFrame(
             imgui.CenterText(fa.COINS..u8' Количество рыбных монет: '..sep(ini.stats.artefaktall))
             imgui.CenterText(fa.FISH..u8' Количество рыбы: '..sep(ini.stats.fishrodall))
             imgui.CenterText(fa.BOXES_STACKED..u8 ' Количество ларцов: '..sep(ini.stats.larecall))
-            imgui.End()
-        end
+
+        imgui.End()
     end
 )
 -- спиздил меню у MikuProjectReborn, автор разрешил
@@ -613,6 +607,7 @@ function main()
     sampRegisterChatCommand('fish', function()
         Window[0] = not Window[0]
     end)
+    check_update()
   
     while true do
         wait(0)
