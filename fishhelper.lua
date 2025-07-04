@@ -251,9 +251,9 @@ function sampev.onServerMessage(color, text)
         ini.stats.zatochkasalary = ini.stats.zatochkaall * ini.price.zatochkaprice
         save()
     end
-
-    if text:find('(.+) Вы забросили удочку.') then
-        return true
+        
+    if text:find('(.+) Вы уже забросили удочку.') then
+        return false
     end
 end
 
