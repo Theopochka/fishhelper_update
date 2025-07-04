@@ -1,7 +1,7 @@
 -- автор наложил говнеца
 
 script_name('fishHelper')
-script_version('1.0')
+script_version('2.0')
 script_author('Theopka')
 
 local ffi = require 'ffi'
@@ -28,16 +28,14 @@ local Window = imgui.new.bool()
 local waiting = 1500
 local active = false
 local cmd = "/fishrod"
-local did = 25286 -- your dialog id
 --
 local ltn12 = require("ltn12")
 local http = require("socket.http")
 local lmPath = "fishhelper.lua"
 local lmUrl = "https://raw.githubusercontent.com/Theopochka/fishhelper_update/main/fishhelper.lua"
 
-local inicfg = require 'inicfg'
-local directIni = 'fishHelper.ini'
-local ini = inicfg.load(inicfg.load({
+local jsoncfg = require 'jsoncfg'
+local ini = jsoncfg.load({
     autocaptcha = {
         delay = 1000,
         enabled = false,
@@ -47,13 +45,14 @@ local ini = inicfg.load(inicfg.load({
         fishbot = false,
     },
     stats = {
-        salary = 0,
         fishsalary = 0,
         fishrodall = 0,
         larecall = 0,
         larecsalary = 0,
         artefaktall = 0,
         artefaktsalary = 0,
+        zatochkasalary = 0,
+        zatochkaall = 0,
     },
     oknostats = {
         okno = false,
@@ -61,12 +60,13 @@ local ini = inicfg.load(inicfg.load({
     price = {
         larecprice = 0,
         artefaktprice = 0,
+        zatochkaprice= 0,
     },
-}, directIni))
-inicfg.save(ini, directIni)
+}, 'fishHelper.json')
+jsoncfg.save(ini, 'fishHelper.json')
 
 local save = function()
-    inicfg.save(ini, directIni)
+    jsoncfg.save(ini, 'fishHelper.json')
 end
 
 local found_update = imgui.new.bool()
@@ -74,15 +74,16 @@ local WindowStats = imgui.new.bool(ini.oknostats.okno)
 
 local delay = imgui.new.int(ini.autocaptcha.delay)
 local autocaptcha = imgui.new.bool(ini.autocaptcha.enabled)
+local activeprice = imgui.new.bool()
 
 local knopka = imgui.new.bool(ini.button.knopka)
 local fishbotknopka = imgui.new.bool(ini.button.fishbot)
 
 local buffer = {
     larecprice = imgui.new.int(ini.price.larecprice),
-    artefaktprice = imgui.new.int(ini.price.artefaktprice)
+    artefaktprice = imgui.new.int(ini.price.artefaktprice),
+    zatochkaprice = imgui.new.int(ini.price.zatochkaprice)
 }
-
 local fishvalue = {            -- таблица рыб, второй пункт это стоимость
     ['Kарп']              = 38996,
     ['Сазан']             = 44300,
@@ -161,6 +162,7 @@ local artefakt = {             -- таблица артефактов, второй пункт это рыбные мо
     ['Ритуальная чаша']       = 2,
     ['Неизвестная статуэтка'] = 2,
 }
+
 function imgui.GetMiddleButtonX(count)
     local width = imgui.GetWindowContentRegionWidth() -- ширины контекста окно
     local space = imgui.GetStyle().ItemSpacing.x
@@ -215,7 +217,7 @@ function updateScript(scriptUrl, scriptPath)
 end
 
 function sampev.onServerMessage(color, text)
-    local fish_name = text:match("поймал%(а%) рыбу '(.-)'")
+    local fish_name = text:match("поймал%(а%) рыбу '(.+)'")
     if fish_name then
         local value = fishvalue[fish_name]
         if value then
@@ -223,6 +225,10 @@ function sampev.onServerMessage(color, text)
             ini.stats.fishsalary = ini.stats.fishsalary + value
             save() 
         end
+    end
+    if text:find('Вы поймали сразу 2 рыбы! (.+)') then
+        ini.stats.fishrodall = ini.stats.fishrodall + 1
+        save()
     end
 
     local art_name = text:match("поймал%(а%) '(.-)'")
@@ -240,17 +246,27 @@ function sampev.onServerMessage(color, text)
         ini.stats.larecsalary = ini.stats.larecall * ini.price.larecprice
         save()
     end
-    if text:match('(.+) Вы забросили удочку.') then
+    if text:find("Вам был добавлен предмет 'Заточка для бронежилета") then
+        ini.stats.zatochkaall = ini.stats.zatochkaall + 1
+        ini.stats.zatochkasalary = ini.stats.zatochkaall * ini.price.zatochkaprice
+        save()
+    end
+
+    if text:find('(.+) Вы забросили удочку.') then
         return false
     end
 end
 
-function sampev.onShowDialog(dialogId, style, title, button1, button2, text)
+function sampev.onShowDialog(did, style, title, button1, button2, text)
     if active then
-        if dialogId == did then
-            sampSendDialogResponse(dialogId, 1, 5, nil)
-            return false
-        end
+        sampSendDialogResponse(did, 1, 5, nil)
+        return false
+    end
+end
+
+function sampev.onTextDrawSetString(id, text)
+    if text:find("PRESS_KEY") then
+        sampSendClickTextdraw(id)
     end
 end
 
@@ -290,7 +306,7 @@ local StateFrame = imgui.OnFrame(
         imgui.SetNextWindowPos(imgui.ImVec2(resX / 2, resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sizeX, sizeY), imgui.Cond.FirstUseEver)
 
-        imgui.Begin('dlc', Window, imgui.WindowFlags.NoDecoration)
+        imgui.Begin('dlc', Window, imgui.WindowFlags.NoTitleBar)
         
         imgui.SetCursorPos(imgui.ImVec2(4 * MDS, 4 * MDS))
         if imgui.Button(fa.XMARK..'', imgui.ImVec2(50, 50)) then
@@ -308,19 +324,21 @@ local StateFrame = imgui.OnFrame(
 
         imgui.PushStyleColor(imgui.Col.Border, imgui.ImVec4(1.0, 1.0, 1.0, 0.0))
         imgui.SetCursorPos(imgui.ImVec2(115 * MDS, 10 * MDS)) 
-    if imgui.BeginChild('Name##'..tab, imgui.ImVec2(415 * MDS, 320 * MDS), true) then -- меню
+    if imgui.BeginChild('Name##'..tab, imgui.ImVec2(), true) then -- меню
         
         if tab == 1 then 
-            imgui.CenterText(u8'Итоговый заработок: '..sep(ini.stats.salary + ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary)..'$') 
+            imgui.CenterText(u8'Итоговый заработок: '..sep(ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary + ini.stats.zatochkaall)..'$') 
             imgui.Text('')
             imgui.CenterText(u8'Заработок ларцов: '..sep(ini.stats.larecsalary)..'$')
             imgui.CenterText(u8'Заработок на рыбе: '..sep(ini.stats.fishsalary)..'$')
             imgui.CenterText(u8'Заработок на рыбных монет: '..sep(ini.stats.artefaktsalary)..'$')
+            imgui.CenterText(u8'Заработок на заточек: '..sep(ini.stats.zatochkasalary)..'$')
             imgui.Text('')
             imgui.CenterText(u8'Количество рыбных монет: '..sep(ini.stats.artefaktall))
             imgui.Hint('Это рыбные монеты, я просто конвертировал с артефактов в рыбные монеты')
             imgui.CenterText(u8'Количество рыбы: '..sep(ini.stats.fishrodall))
             imgui.CenterText(u8'Количество ларцов: '..sep(ini.stats.larecall))
+            imgui.CenterText(u8'Количество заточек: '..sep(ini.stats.zatochkaall))
             imgui.SetCursorPosY(imgui.GetWindowSize().y - (30*2) * MDS - imgui.GetStyle().FramePadding.y * 2)
             if imgui.Button(fa.TRASH..u8' Сбросить всё', imgui.ImVec2(imgui.GetMiddleButtonX(1), 30 * MDS)) then
                 imgui.OpenPopup(fa.CIRCLE_EXCLAMATION..u8' Предупреждения! ')
@@ -332,9 +350,11 @@ local StateFrame = imgui.OnFrame(
                     ini.stats.larecsalary = 0
                     ini.stats.fishsalary = 0
                     ini.stats.artefaktsalary = 0
+                    ini.stats.zatochkasalary = 0
                     ini.stats.artefaktall = 0
                     ini.stats.fishrodall = 0
                     ini.stats.larecall = 0
+                    ini.stats.zatochkaall = 0
                     save()
                     imgui.CloseCurrentPopup()
                 end
@@ -356,6 +376,7 @@ local StateFrame = imgui.OnFrame(
                     ini.stats.larecsalary = 0
                     ini.stats.fishsalary = 0
                     ini.stats.artefaktsalary = 0
+                    ini.stats.zatochkasalary = 0
                     save()
                     imgui.CloseCurrentPopup()
                 end
@@ -377,6 +398,7 @@ local StateFrame = imgui.OnFrame(
                     ini.stats.artefaktall = 0
                     ini.stats.fishrodall = 0
                     ini.stats.larecall = 0
+                    ini.stats.zatochkaall = 0
                     save()
                     imgui.CloseCurrentPopup()
                 end
@@ -401,6 +423,10 @@ local StateFrame = imgui.OnFrame(
                 end
                 if imgui.InputInt(u8' Цена рыбной монеты', buffer.artefaktprice, 0, 0) then
                     ini.price.artefaktprice = buffer.artefaktprice[0]
+                    save()
+                end
+                if imgui.InputInt(u8' Цена заточек', buffer.zatochkaprice, 0, 0) then
+                    ini.price.zatochkaprice = buffer.zatochkaprice[0]
                     save()
                 end
                 if imgui.Button(fa.XMARK..u8' Закрыть', imgui.ImVec2(-1, 20 * MDS)) then
@@ -457,9 +483,7 @@ local StateFrame = imgui.OnFrame(
                     imgui.CloseCurrentPopup()
                 end
                 imgui.EndPopup()
-            end
-
-
+            end            
         end
         if tab == 3 then 
             imgui.CenterText(fa.USER..u8' Author: Theopka')
@@ -471,6 +495,14 @@ local StateFrame = imgui.OnFrame(
             if imgui.CollapsingHeader(fa.FIRE..u8' Список обновленний') then
                 if imgui.CollapsingHeader(u8'1.0(04.01.2025)') then
                     imgui.CenterText(u8'Релиз скрипта')
+                end
+                if imgui.CollapsingHeader(u8'2.0(04.07.2025)') then
+                    imgui.CenterText(u8'Добавлено нажатие кнопки N')
+                    imgui.CenterText(u8'Добавлено подсчёт заточек')
+                    imgui.CenterText(u8'Теперь скрипт будет считать если вы словили 2 рыбы')
+                    imgui.CenterText(u8'Теперь флуд текстом то что удочка заброшена не будет')
+                    imgui.CenterText(u8'Фикс мелких багов')
+                    imgui.CenterText(u8'Оптимизация кода')
                 end
             end
         end
@@ -553,16 +585,18 @@ imgui.OnFrame(
     function() return WindowStats[0] end,
     function(player)
         imgui.Begin('stats_window', WindowStats, imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.AlwaysAutoResize)
-
-            imgui.CenterText(fa.MONEY_CHECK..u8' Итоговый заработок: '..sep(ini.stats.salary + ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary)..'$') 
+        
+            imgui.CenterText(fa.MONEY_CHECK..u8' Итоговый заработок: '..sep(ini.stats.artefaktsalary + ini.stats.fishsalary + ini.stats.larecsalary + ini.stats.zatochkaall)..'$') 
             imgui.Text('')
             imgui.CenterText(u8'Заработок ларцов: '..sep(ini.stats.larecsalary)..'$')
             imgui.CenterText(u8'Заработок на рыбе: '..sep(ini.stats.fishsalary)..'$')
             imgui.CenterText(u8'Заработок на рыбных монет: '..sep(ini.stats.artefaktsalary)..'$')
+            imgui.CenterText(u8'Заработок на заточек: '..sep(ini.stats.zatochkasalary)..'$')
             imgui.Text('')
             imgui.CenterText(fa.COINS..u8' Количество рыбных монет: '..sep(ini.stats.artefaktall))
             imgui.CenterText(fa.FISH..u8' Количество рыбы: '..sep(ini.stats.fishrodall))
             imgui.CenterText(fa.BOXES_STACKED..u8 ' Количество ларцов: '..sep(ini.stats.larecall))
+            imgui.CenterText(u8'Количество заточек: '..sep(ini.stats.zatochkaall))
 
         imgui.End()
     end
