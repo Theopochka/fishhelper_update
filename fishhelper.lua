@@ -252,7 +252,7 @@ function sampev.onServerMessage(color, text)
         save()
     end
         
-    if text:find('(.+) Вы уже забросили удочку.') then
+    if text:find('Вы уже забросили удочку.') then
         return false
     end
 end
