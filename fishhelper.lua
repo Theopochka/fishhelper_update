@@ -217,7 +217,7 @@ function updateScript(scriptUrl, scriptPath)
 end
 
 function sampev.onServerMessage(color, text)
-    local fish_name = text:match("поймал%(а%) рыбу '(.+)'")
+    local fish_name = text:match("поймал%(а%) рыбу '(.-)'")
     if fish_name then
         local value = fishvalue[fish_name]
         if value then
@@ -226,7 +226,7 @@ function sampev.onServerMessage(color, text)
             save() 
         end
     end
-    if text:find('Вы поймали сразу 2 рыбы! (.+)') then
+    if text:find('Вы поймали сразу 2 рыбы!') then
         ini.stats.fishrodall = ini.stats.fishrodall + 1
         save()
     end
@@ -253,7 +253,7 @@ function sampev.onServerMessage(color, text)
     end
 
     if text:find('(.+) Вы забросили удочку.') then
-        return false
+        return true
     end
 end
 
